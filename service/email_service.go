@@ -2,6 +2,8 @@ package service
 
 import (
 	"log"
+	"net/smtp"
+	"os"
 )
 
 type EmailService interface {
@@ -15,6 +17,23 @@ func NewEmailService() EmailService {
 }
 
 func (s *emailService) SendNotificationEmail(to string, subject string, body string) error {
-	log.Printf("[EMAIL API] Sending to: %s | Subject: %s | Body: %s", to, subject, body)
+	host := os.Getenv("SMTP_HOST")
+	port := os.Getenv("SMTP_PORT")
+	user := os.Getenv("SMTP_USER")
+	pass := os.Getenv("SMTP_PASS")
+
+	auth := smtp.PlainAuth("", user, pass, host)
+
+	// Format email standar MIME
+	msg := []byte("To: " + to + "\r\nSubject: " + subject + "\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n" + body)
+
+	addr := host + ":" + port
+	err := smtp.SendMail(addr, auth, user, []string{to}, msg)
+	if err != nil {
+		log.Printf("[EMAIL ERROR] Gagal mengirim email ke %s: %v", to, err)
+		return err
+	}
+
+	log.Printf("[EMAIL SMTP] Berhasil mengirim email asli ke: %s", to)
 	return nil
 }
