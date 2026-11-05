@@ -21,6 +21,9 @@ func SetupRoutes(e *echo.Echo,
 	api.POST("/register", userController.Register)
 	api.POST("/login", userController.Login)
 
+	// Informasi Cuaca Publik (OpenWeather)
+	api.GET("/weather", weatherController.Current)
+
 	// Payment Gateway Webhook (Midtrans Notif Callback) - Tanpa Auth JWT
 	api.POST("/payment/webhook", txController.MidtransWebhook)
 	api.POST("/transactions/notification", txController.MidtransWebhook)
@@ -31,8 +34,8 @@ func SetupRoutes(e *echo.Echo,
 	userGroup.GET("/services/:id", wasteController.Get)
 	userGroup.GET("/dues", duesController.List)
 	userGroup.GET("/dues/:id", duesController.Get)
-	userGroup.GET("/weather", weatherController.Current)
 	userGroup.GET("/notifications", duesController.Notifications)
+	userGroup.PUT("/notifications/read", duesController.MarkNotificationsRead)
 
 	// Buku Kas & Pengeluaran Kas RT (Transparansi untuk Warga & Admin)
 	userGroup.GET("/expenses", expenseController.List)

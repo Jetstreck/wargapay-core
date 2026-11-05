@@ -28,6 +28,7 @@ type transactionService struct {
 	wasteRepo       repository.WasteServiceRepository
 	midtransService MidtransService
 	emailService    EmailService
+	notifSvc        NotificationService
 }
 
 func NewTransactionService(
@@ -37,8 +38,9 @@ func NewTransactionService(
 	wasteRepo repository.WasteServiceRepository,
 	midtransService MidtransService,
 	emailService EmailService,
+	notifSvc ...NotificationService,
 ) TransactionService {
-	return &transactionService{
+	svc := &transactionService{
 		txRepo:          txRepo,
 		userRepo:        userRepo,
 		duesRepo:        duesRepo,
@@ -46,6 +48,10 @@ func NewTransactionService(
 		midtransService: midtransService,
 		emailService:    emailService,
 	}
+	if len(notifSvc) > 0 {
+		svc.notifSvc = notifSvc[0]
+	}
+	return svc
 }
 
 func (s *transactionService) CreateTransaction(userID uint, req dto.CreateTransactionRequest) (*entity.Transaction, error) {
@@ -203,8 +209,14 @@ func (s *transactionService) HandleMidtransWebhook(payload dto.MidtransNotificat
 			}
 		}
 
-		// Kirim email notifikasi sukses bayar
-		if tx.User.Email != "" {
+		// Kirim email notifikasi sukses bayar & catat ke notifikasi
+		if s.notifSvc != nil {
+			desc := "Layanan Sampah Warga"
+			if tx.Type == "dues" {
+				desc = "Iuran IPL Lingkungan"
+			}
+			s.notifSvc.NotifyPaymentSuccess(&tx.User, tx.OrderID, tx.Amount, desc)
+		} else if tx.User.Email != "" {
 			body := fmt.Sprintf("Halo %s,\n\nPembayaran transaksi Anda berhasil!\nOrder ID: %s\nTotal: Rp %d\nMetode: %s\nWaktu: %s\n\nTerima kasih atas partisipasi Anda di WargaPay.",
 				tx.User.Name, tx.OrderID, tx.Amount, tx.PaymentType, now.Format("02-01-2006 15:04:05"))
 			go s.emailService.SendNotificationEmail(tx.User.Email, "Konfirmasi Pembayaran Sukses - WargaPay", body)
@@ -246,7 +258,13 @@ func (s *transactionService) SimulatePaymentSuccess(txID, userID uint, isAdmin b
 		return nil, err
 	}
 
-	if tx.User.Email != "" {
+	if s.notifSvc != nil {
+		desc := "Layanan Sampah Warga (Sandbox)"
+		if tx.Type == "dues" {
+			desc = "Iuran IPL Lingkungan (Sandbox)"
+		}
+		s.notifSvc.NotifyPaymentSuccess(&tx.User, tx.OrderID, tx.Amount, desc)
+	} else if tx.User.Email != "" {
 		body := fmt.Sprintf("Halo %s,\n\nPembayaran Anda via Sandbox berhasil dicatat.\nOrder ID: %s\nTotal: Rp %d\nWaktu: %s\n\nTerima kasih.",
 			tx.User.Name, tx.OrderID, tx.Amount, now.Format("02-01-2006 15:04:05"))
 		go s.emailService.SendNotificationEmail(tx.User.Email, "Konfirmasi Pembayaran Sandbox - WargaPay", body)

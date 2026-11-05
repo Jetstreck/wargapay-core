@@ -18,28 +18,34 @@ import (
 
 func main() {
 	// Memuat variabel dari file .env (untuk development lokal)
-	// Jika file .env tidak ditemukan (misal di production), program tidak akan error (diabaikan)
 	_ = godotenv.Load()
 
 	// Menghubungkan ke database PostgreSQL
 	config.ConnectDB()
 
-	// Melakukan auto-migrate untuk entity User, WasteService, Dues, Transaction, dan Expense
+	// Melakukan auto-migrate untuk entity User, WasteService, Dues, Transaction, Expense, dan Notification
 	err := config.DB.AutoMigrate(
 		&entity.User{},
 		&entity.WasteService{},
 		&entity.Dues{},
 		&entity.Transaction{},
 		&entity.Expense{},
+		&entity.Notification{},
 	)
 	if err != nil {
 		log.Fatalf("Failed to auto migrate database: %v", err)
 	}
 
-	// Inisialisasi Service, Repository, dan Controller
+	// Inisialisasi Repository Inti & Layanan Notifikasi Terpadu (Mailtrap + Dashboard)
 	emailSvc := service.NewEmailService()
 	userRepo := repository.NewUserRepository(config.DB)
-	userSvc := service.NewUserService(userRepo, emailSvc)
+	duesRepo := repository.NewDuesRepository(config.DB)
+	notifRepo := repository.NewNotificationRepository(config.DB)
+
+	notifSvc := service.NewNotificationService(notifRepo, userRepo, duesRepo, emailSvc)
+
+	// Inisialisasi Service dan Controller Pengguna
+	userSvc := service.NewUserService(userRepo, emailSvc, notifSvc)
 	userCtl := controller.NewUserController(userSvc)
 
 	// Inisialisasi fitur layanan sampah, tagihan iuran, dan informasi cuaca
@@ -47,9 +53,8 @@ func main() {
 	wasteSvc := service.NewWasteServiceService(wasteRepo)
 	wasteCtl := controller.NewWasteServiceController(wasteSvc)
 
-	duesRepo := repository.NewDuesRepository(config.DB)
-	duesSvc := service.NewDuesService(duesRepo)
-	duesCtl := controller.NewDuesController(duesSvc)
+	duesSvc := service.NewDuesService(duesRepo, userRepo, notifSvc)
+	duesCtl := controller.NewDuesController(duesSvc, notifSvc)
 
 	weatherSvc := service.NewWeatherService()
 	weatherCtl := controller.NewWeatherController(weatherSvc)
@@ -57,7 +62,7 @@ func main() {
 	// Inisialisasi Payment Gateway (Midtrans) & Transaksi
 	midtransSvc := service.NewMidtransService()
 	txRepo := repository.NewTransactionRepository(config.DB)
-	txSvc := service.NewTransactionService(txRepo, userRepo, duesRepo, wasteRepo, midtransSvc, emailSvc)
+	txSvc := service.NewTransactionService(txRepo, userRepo, duesRepo, wasteRepo, midtransSvc, emailSvc, notifSvc)
 	txCtl := controller.NewTransactionController(txSvc)
 
 	// Inisialisasi Pengeluaran Kas RT (Expenses)
@@ -65,8 +70,8 @@ func main() {
 	expenseSvc := service.NewExpenseService(expenseRepo)
 	expenseCtl := controller.NewExpenseController(expenseSvc)
 
-	// Inisialisasi dan jalankan Scheduler Service
-	scheduler := service.NewSchedulerService(emailSvc)
+	// Inisialisasi dan jalankan Scheduler Service (Pengingat Tagihan Otomatis)
+	scheduler := service.NewSchedulerService(emailSvc, duesRepo, userRepo, notifSvc)
 	scheduler.Start()
 
 	// Inisialisasi framework Echo
@@ -74,22 +79,25 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	// Middleware CORS agar siap terintegrasi dengan frontend (React/Vite di port 5173 dsb)
+	// Middleware CORS agar siap terintegrasi dengan frontend
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization"},
 	}))
 
-	// Menyiapkan routing aplikasi
+	// Registrasi semua rute API
 	routes.SetupRoutes(e, userCtl, wasteCtl, duesCtl, weatherCtl, txCtl, expenseCtl)
 
-	// Menentukan port server (default ke 8080 jika tidak ada di env)
+	// Menentukan port server (default 8080 jika tidak ada di env)
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	log.Printf("Server running on port %s", port)
-	e.Logger.Fatal(e.Start(":" + port))
+	// Menjalankan server Echo
+	log.Printf("Server WargaPay berjalan di port %s", port)
+	if err := e.Start(":" + port); err != nil {
+		log.Fatalf("Gagal menjalankan server: %v", err)
+	}
 }
