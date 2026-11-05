@@ -34,6 +34,7 @@ func (m *mockUserRepo) FindByID(id uint) (*entity.User, error) {
 	return &entity.User{ID: id, Name: "User Test", Email: "user@test.com", Role: role}, nil
 }
 func (m *mockUserRepo) FindAll() ([]entity.User, error) { return nil, nil }
+func (m *mockUserRepo) UpdateRole(id uint, role string) error { return nil }
 
 type mockEmailSvc struct{}
 
@@ -352,6 +353,14 @@ func TestAllEndpoints(t *testing.T) {
 			name:         "Admin List Users",
 			method:       http.MethodGet,
 			path:         "/api/v1/admin/users",
+			token:        adminToken,
+			expectedCode: http.StatusOK,
+		},
+		{
+			name:         "Admin Update User Role",
+			method:       http.MethodPut,
+			path:         "/api/v1/admin/users/2/role",
+			body:         map[string]string{"role": "admin"},
 			token:        adminToken,
 			expectedCode: http.StatusOK,
 		},

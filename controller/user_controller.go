@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+	"strconv"
 	"wargapay-core/dto"
 	"wargapay-core/service"
 
@@ -60,5 +61,30 @@ func (ctl *UserController) ListUsers(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"message": "Berhasil mengambil data warga",
 		"data":    users,
+	})
+}
+
+func (ctl *UserController) UpdateUserRole(c echo.Context) error {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "ID pengguna tidak valid"})
+	}
+
+	var req struct {
+		Role string `json:"role"`
+	}
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Format request tidak valid"})
+	}
+
+	updated, err := ctl.userService.UpdateUserRole(uint(id), req.Role)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"message": "Role pengguna berhasil diperbarui",
+		"data":    updated,
 	})
 }

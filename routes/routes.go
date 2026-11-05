@@ -52,6 +52,7 @@ func SetupRoutes(e *echo.Echo,
 
 	// Manajemen Warga untuk Admin
 	adminGroup.GET("/users", userController.ListUsers)
+	adminGroup.PUT("/users/:id/role", userController.UpdateUserRole)
 
 	// Manajemen Pengeluaran Kas RT untuk Admin
 	adminGroup.POST("/expenses", expenseController.Create)

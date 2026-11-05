@@ -16,6 +16,7 @@ type UserService interface {
 	Register(req dto.RegisterRequest) (*dto.UserDetail, error)
 	Login(req dto.LoginRequest) (string, *dto.UserDetail, error)
 	ListUsers() ([]dto.UserDetail, error)
+	UpdateUserRole(id uint, role string) (*dto.UserDetail, error)
 }
 
 type userService struct {
@@ -111,4 +112,24 @@ func (s *userService) ListUsers() ([]dto.UserDetail, error) {
 		})
 	}
 	return results, nil
+}
+
+func (s *userService) UpdateUserRole(id uint, role string) (*dto.UserDetail, error) {
+	if role != "admin" && role != "user" {
+		return nil, errors.New("role harus berupa 'admin' atau 'user'")
+	}
+	user, err := s.userRepo.FindByID(id)
+	if err != nil {
+		return nil, errors.New("pengguna tidak ditemukan")
+	}
+	if err := s.userRepo.UpdateRole(id, role); err != nil {
+		return nil, err
+	}
+	user.Role = role
+	return &dto.UserDetail{
+		ID:    user.ID,
+		Name:  user.Name,
+		Email: user.Email,
+		Role:  user.Role,
+	}, nil
 }
