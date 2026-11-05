@@ -25,7 +25,7 @@ func main() {
 	config.ConnectDB()
 
 	// Melakukan auto-migrate untuk entity User
-	err := config.DB.AutoMigrate(&entity.User{})
+	err := config.DB.AutoMigrate(&entity.User{}, &entity.WasteService{}, &entity.Dues{})
 	if err != nil {
 		log.Fatalf("Failed to auto migrate database: %v", err)
 	}
@@ -35,6 +35,18 @@ func main() {
 	userRepo := repository.NewUserRepository(config.DB)
 	userSvc := service.NewUserService(userRepo, emailSvc)
 	userCtl := controller.NewUserController(userSvc)
+
+	// Inisialisasi fitur layanan sampah, tagihan iuran, dan informasi cuaca.
+	wasteRepo := repository.NewWasteServiceRepository(config.DB)
+	wasteSvc := service.NewWasteServiceService(wasteRepo)
+	wasteCtl := controller.NewWasteServiceController(wasteSvc)
+
+	duesRepo := repository.NewDuesRepository(config.DB)
+	duesSvc := service.NewDuesService(duesRepo)
+	duesCtl := controller.NewDuesController(duesSvc)
+
+	weatherSvc := service.NewWeatherService()
+	weatherCtl := controller.NewWeatherController(weatherSvc)
 
 	// Inisialisasi dan jalankan Scheduler Service
 	scheduler := service.NewSchedulerService(emailSvc)
@@ -46,7 +58,7 @@ func main() {
 	e.Use(middleware.Recover())
 
 	// Menyiapkan routing aplikasi
-	routes.SetupRoutes(e, userCtl)
+	routes.SetupRoutes(e, userCtl, wasteCtl, duesCtl, weatherCtl)
 
 	// Menentukan port server (default ke 8080 jika tidak ada di env)
 	port := os.Getenv("PORT")
