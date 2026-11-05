@@ -24,8 +24,13 @@ func (s *emailService) SendNotificationEmail(to string, subject string, body str
 
 	auth := smtp.PlainAuth("", user, pass, host)
 
-	// Format email standar MIME
-	msg := []byte("To: " + to + "\r\nSubject: " + subject + "\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n" + body)
+	sender := os.Getenv("SMTP_SENDER")
+	if sender == "" {
+		sender = "admin@wargapay.id"
+	}
+
+	// Format email standar MIME lengkap dengan header From, To, Subject
+	msg := []byte("From: WargaPay RT 05 <" + sender + ">\r\nTo: " + to + "\r\nSubject: " + subject + "\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n" + body)
 
 	addr := host + ":" + port
 	err := smtp.SendMail(addr, auth, user, []string{to}, msg)

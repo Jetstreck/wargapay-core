@@ -4,7 +4,7 @@ import "time"
 
 type Dues struct {
 	ID          uint       `gorm:"primaryKey" json:"id"`
-	UserID      uint       `gorm:"not null;index" json:"user_id"`
+	UserID      uint       `gorm:"not null;uniqueIndex:idx_user_period" json:"user_id"`
 	User        User       `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT" json:"-"`
 	Period      string     `gorm:"type:varchar(7);not null;uniqueIndex:idx_user_period" json:"period"`
 	WasteFee    int64      `gorm:"not null" json:"waste_fee"`
