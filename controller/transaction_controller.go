@@ -178,3 +178,4 @@ func (ctl *TransactionController) Report(c echo.Context) error {
 		"data":    report,
 	})
 }
+

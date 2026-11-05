@@ -32,3 +32,4 @@ type TransactionReportResponse struct {
 	WasteServiceRevenue int64                `json:"waste_service_revenue"`
 	Transactions        []entity.Transaction `json:"transactions,omitempty"`
 }
+

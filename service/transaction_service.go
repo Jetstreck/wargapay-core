@@ -272,3 +272,4 @@ func (s *transactionService) GetTransactionByID(txID, userID uint, isAdmin bool)
 func (s *transactionService) GetTransactionReport(startDate, endDate string) (*dto.TransactionReportResponse, error) {
 	return s.txRepo.GetReport(startDate, endDate)
 }
+
