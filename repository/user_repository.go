@@ -9,6 +9,7 @@ import (
 type UserRepository interface {
 	Create(user *entity.User) error
 	FindByEmail(email string) (*entity.User, error)
+	FindByID(id uint) (*entity.User, error)
 	FindAll() ([]entity.User, error)
 }
 
@@ -27,6 +28,15 @@ func (r *userRepository) Create(user *entity.User) error {
 func (r *userRepository) FindByEmail(email string) (*entity.User, error) {
 	var user entity.User
 	err := r.db.Where("email = ?", email).First(&user).Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *userRepository) FindByID(id uint) (*entity.User, error) {
+	var user entity.User
+	err := r.db.First(&user, id).Error
 	if err != nil {
 		return nil, err
 	}

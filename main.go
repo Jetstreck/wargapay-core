@@ -24,8 +24,13 @@ func main() {
 	// Menghubungkan ke database PostgreSQL
 	config.ConnectDB()
 
-	// Melakukan auto-migrate untuk entity User
-	err := config.DB.AutoMigrate(&entity.User{}, &entity.WasteService{}, &entity.Dues{})
+	// Melakukan auto-migrate untuk entity User, WasteService, Dues, dan Transaction
+	err := config.DB.AutoMigrate(
+		&entity.User{},
+		&entity.WasteService{},
+		&entity.Dues{},
+		&entity.Transaction{},
+	)
 	if err != nil {
 		log.Fatalf("Failed to auto migrate database: %v", err)
 	}
@@ -36,7 +41,7 @@ func main() {
 	userSvc := service.NewUserService(userRepo, emailSvc)
 	userCtl := controller.NewUserController(userSvc)
 
-	// Inisialisasi fitur layanan sampah, tagihan iuran, dan informasi cuaca.
+	// Inisialisasi fitur layanan sampah, tagihan iuran, dan informasi cuaca
 	wasteRepo := repository.NewWasteServiceRepository(config.DB)
 	wasteSvc := service.NewWasteServiceService(wasteRepo)
 	wasteCtl := controller.NewWasteServiceController(wasteSvc)
@@ -48,6 +53,12 @@ func main() {
 	weatherSvc := service.NewWeatherService()
 	weatherCtl := controller.NewWeatherController(weatherSvc)
 
+	// Inisialisasi Payment Gateway (Midtrans) & Transaksi
+	midtransSvc := service.NewMidtransService()
+	txRepo := repository.NewTransactionRepository(config.DB)
+	txSvc := service.NewTransactionService(txRepo, userRepo, duesRepo, wasteRepo, midtransSvc, emailSvc)
+	txCtl := controller.NewTransactionController(txSvc)
+
 	// Inisialisasi dan jalankan Scheduler Service
 	scheduler := service.NewSchedulerService(emailSvc)
 	scheduler.Start()
@@ -57,8 +68,15 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
+	// Middleware CORS agar siap terintegrasi dengan frontend (React/Vite di port 5173 dsb)
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization"},
+	}))
+
 	// Menyiapkan routing aplikasi
-	routes.SetupRoutes(e, userCtl, wasteCtl, duesCtl, weatherCtl)
+	routes.SetupRoutes(e, userCtl, wasteCtl, duesCtl, weatherCtl, txCtl)
 
 	// Menentukan port server (default ke 8080 jika tidak ada di env)
 	port := os.Getenv("PORT")
