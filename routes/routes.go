@@ -32,6 +32,7 @@ func SetupRoutes(e *echo.Echo,
 	userGroup.GET("/dues", duesController.List)
 	userGroup.GET("/dues/:id", duesController.Get)
 	userGroup.GET("/weather", weatherController.Current)
+	userGroup.GET("/notifications", duesController.Notifications)
 
 	// Buku Kas & Pengeluaran Kas RT (Transparansi untuk Warga & Admin)
 	userGroup.GET("/expenses", expenseController.List)

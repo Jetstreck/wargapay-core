@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"wargapay-core/dto"
@@ -157,6 +158,65 @@ func (ctl *DuesController) Delete(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "tagihan berhasil dihapus",
+	})
+}
+
+// Notifications - Endpoint pengingat tagihan iuran & broadcast jadwal sanitasi
+func (ctl *DuesController) Notifications(c echo.Context) error {
+	userID, ok := currentUserID(c)
+	if !ok {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "identitas token tidak valid",
+		})
+	}
+
+	items, err := ctl.service.List(userID, "", "unpaid")
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	type NotificationItem struct {
+		ID       string `json:"id"`
+		Type     string `json:"type"`
+		Title    string `json:"title"`
+		Message  string `json:"message"`
+		Date     string `json:"date"`
+		Priority string `json:"priority"`
+		DuesID   uint   `json:"dues_id,omitempty"`
+		Amount   int64  `json:"amount,omitempty"`
+		Period   string `json:"period,omitempty"`
+	}
+
+	var notifications []NotificationItem
+
+	for _, d := range items {
+		notifications = append(notifications, NotificationItem{
+			ID:       fmt.Sprintf("notif-due-%d", d.ID),
+			Type:     "payment_reminder",
+			Title:    fmt.Sprintf("Pengingat Tagihan IPL Periode %s", d.Period),
+			Message:  fmt.Sprintf("Tagihan iuran IPL periode %s sebesar Rp %d belum diselesaikan. Jatuh tempo tanggal 10. Bayar mudah via Midtrans QRIS.", d.Period, d.Total),
+			Date:     "Pengingat Aktif",
+			Priority: "high",
+			DuesID:   d.ID,
+			Amount:   d.Total,
+			Period:   d.Period,
+		})
+	}
+
+	// Notifikasi broadcast sistem sanitasi
+	notifications = append(notifications, NotificationItem{
+		ID:       "notif-broadcast-sanitasi",
+		Type:     "info",
+		Title:    "Jadwal Armada Pengangkutan Sampah RT 05",
+		Message:  "Truk kebersihan beroperasi setiap Senin, Rabu, dan Jumat (06:30 - 08:30 WITA). Mohon sampah diletakkan di depan pagar sebelum pukul 06:00 WITA.",
+		Date:     "Jadwal Rutin",
+		Priority: "normal",
+	})
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"message": "Berhasil mengambil notifikasi pengingat",
+		"data":    notifications,
+		"unread":  len(items),
 	})
 }
 

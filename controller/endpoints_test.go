@@ -320,6 +320,13 @@ func TestAllEndpoints(t *testing.T) {
 
 		// 7. Expenses & User Management
 		{
+			name:         "Get Notifications / Reminders",
+			method:       http.MethodGet,
+			path:         "/api/v1/notifications",
+			token:        userToken,
+			expectedCode: http.StatusOK,
+		},
+		{
 			name:         "Get Expenses List",
 			method:       http.MethodGet,
 			path:         "/api/v1/expenses",
