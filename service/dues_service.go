@@ -29,6 +29,24 @@ func (s *DuesService) Create(req dto.DuesRequest) (*entity.Dues, error) {
 		return nil, errors.New("nominal iuran tidak boleh negatif")
 	}
 
+	// Cek apakah tagihan untuk user dan periode ini sudah ada
+	existingList, err := s.repo.FindAll(req.UserID, req.Period, "")
+	if err == nil && len(existingList) > 0 {
+		existing := existingList[0]
+		if existing.Status == "paid" {
+			return nil, fmt.Errorf("tagihan periode %s untuk warga ini sudah lunas", req.Period)
+		}
+		// Perbarui data tagihan yang belum lunas
+		existing.WasteFee = req.WasteFee
+		existing.SecurityFee = req.SecurityFee
+		existing.RTFund = req.RTFund
+		existing.Total = req.WasteFee + req.SecurityFee + req.RTFund
+		if err := s.repo.Update(&existing); err != nil {
+			return nil, err
+		}
+		return &existing, nil
+	}
+
 	item := &entity.Dues{
 		UserID:      req.UserID,
 		Period:      req.Period,
