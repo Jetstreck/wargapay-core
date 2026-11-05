@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -43,21 +44,47 @@ func (s *midtransService) getSnapBaseURL() string {
 func (s *midtransService) CreateSnapTransaction(orderID string, amount int64, customerName, customerEmail, itemName string) (string, string, error) {
 	serverKey := s.getServerKey()
 
+	safeItemName := strings.TrimSpace(itemName)
+	if len(safeItemName) > 45 {
+		safeItemName = safeItemName[:45]
+	}
+	if safeItemName == "" {
+		safeItemName = "Layanan WargaPay"
+	}
+
+	safeCustomerName := strings.TrimSpace(customerName)
+	if safeCustomerName == "" {
+		safeCustomerName = "Warga"
+	}
+	if len(safeCustomerName) > 45 {
+		safeCustomerName = safeCustomerName[:45]
+	}
+
+	safeCustomerEmail := strings.TrimSpace(customerEmail)
+	if safeCustomerEmail == "" {
+		safeCustomerEmail = "warga@wargapay.id"
+	}
+
+	itemID := orderID
+	if len(itemID) > 45 {
+		itemID = itemID[:45]
+	}
+
 	reqBody := map[string]interface{}{
 		"transaction_details": map[string]interface{}{
 			"order_id":     orderID,
 			"gross_amount": amount,
 		},
 		"customer_details": map[string]interface{}{
-			"first_name": customerName,
-			"email":      customerEmail,
+			"first_name": safeCustomerName,
+			"email":      safeCustomerEmail,
 		},
 		"item_details": []map[string]interface{}{
 			{
-				"id":       orderID,
+				"id":       itemID,
 				"price":    amount,
 				"quantity": 1,
-				"name":     itemName,
+				"name":     safeItemName,
 			},
 		},
 	}
@@ -80,10 +107,7 @@ func (s *midtransService) CreateSnapTransaction(orderID string, amount int64, cu
 	res, err := s.client.Do(req)
 	if err != nil {
 		log.Printf("[MIDTRANS ERROR] Gagal menghubungi Midtrans Snap: %v", err)
-		// Fallback sandbox mockup jika terjadi kendala jaringan saat pengujian
-		token := fmt.Sprintf("mock-snap-%d", time.Now().Unix())
-		redirectURL := "https://app.sandbox.midtrans.com/snap/v2/vtweb/" + token
-		return token, redirectURL, nil
+		return "", "", fmt.Errorf("gagal menghubungi midtrans: %w", err)
 	}
 	defer res.Body.Close()
 
@@ -98,10 +122,8 @@ func (s *midtransService) CreateSnapTransaction(orderID string, amount int64, cu
 	}
 
 	if res.StatusCode != http.StatusCreated && res.StatusCode != http.StatusOK {
-		log.Printf("[MIDTRANS WARN] Response status %d: %v. Menggunakan sandbox token fallback.", res.StatusCode, snapRes.ErrorMessages)
-		token := fmt.Sprintf("snap-sb-%d", time.Now().Unix())
-		redirectURL := "https://app.sandbox.midtrans.com/snap/v2/vtweb/" + token
-		return token, redirectURL, nil
+		log.Printf("[MIDTRANS ERROR] Response status %d: %v", res.StatusCode, snapRes.ErrorMessages)
+		return "", "", fmt.Errorf("midtrans error: %v", snapRes.ErrorMessages)
 	}
 
 	if snapRes.Token == "" {

@@ -123,6 +123,7 @@ func (s *transactionService) CreateTransaction(userID uint, req dto.CreateTransa
 	)
 	if err != nil {
 		log.Printf("[CREATE SNAP ERROR] %v", err)
+		return nil, fmt.Errorf("gagal membuat transaksi midtrans: %w", err)
 	}
 
 	tx := &entity.Transaction{
