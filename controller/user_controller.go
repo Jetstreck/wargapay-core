@@ -50,3 +50,15 @@ func (ctl *UserController) Login(c echo.Context) error {
 		"data":    user,
 	})
 }
+
+func (ctl *UserController) ListUsers(c echo.Context) error {
+	users, err := ctl.userService.ListUsers()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"message": "Berhasil mengambil data warga",
+		"data":    users,
+	})
+}

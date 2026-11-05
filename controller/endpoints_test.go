@@ -87,6 +87,18 @@ func (m *mockMidtransSvc) CreateSnapTransaction(o string, a int64, n, e, i strin
 }
 func (m *mockMidtransSvc) VerifySignature(o, s, g, sig string) bool { return true }
 
+type mockExpenseRepo struct{}
+
+func (m *mockExpenseRepo) Create(e *entity.Expense) error { e.ID = 1; return nil }
+func (m *mockExpenseRepo) FindAll(cat string) ([]entity.Expense, error) {
+	return []entity.Expense{{ID: 1, Title: "Honor Satpam", Category: "Keamanan", Amount: 4500000}}, nil
+}
+func (m *mockExpenseRepo) FindByID(id uint) (*entity.Expense, error) {
+	return &entity.Expense{ID: id, Title: "Honor Satpam"}, nil
+}
+func (m *mockExpenseRepo) Delete(id uint) error          { return nil }
+func (m *mockExpenseRepo) GetTotalExpense() (int64, error) { return 4500000, nil }
+
 func generateToken(id uint, email, role string) string {
 	claims := jwt.MapClaims{
 		"id":    id,
@@ -125,7 +137,11 @@ func setupTestApp() (*echo.Echo, string, string) {
 	txSvc := service.NewTransactionService(txRepo, userRepo, duesRepo, wasteRepo, midtransSvc, emailSvc)
 	txCtl := controller.NewTransactionController(txSvc)
 
-	routes.SetupRoutes(e, userCtl, wasteCtl, duesCtl, weatherCtl, txCtl)
+	expenseRepo := &mockExpenseRepo{}
+	expenseSvc := service.NewExpenseService(expenseRepo)
+	expenseCtl := controller.NewExpenseController(expenseSvc)
+
+	routes.SetupRoutes(e, userCtl, wasteCtl, duesCtl, weatherCtl, txCtl, expenseCtl)
 
 	adminToken := generateToken(1, "admin@wargapay.id", "admin")
 	userToken := generateToken(2, "user@wargapay.id", "user")
@@ -300,6 +316,37 @@ func TestAllEndpoints(t *testing.T) {
 			path:         "/api/v1/weather",
 			token:        userToken,
 			expectedCode: http.StatusBadRequest,
+		},
+
+		// 7. Expenses & User Management
+		{
+			name:         "Get Expenses List",
+			method:       http.MethodGet,
+			path:         "/api/v1/expenses",
+			token:        userToken,
+			expectedCode: http.StatusOK,
+		},
+		{
+			name:   "Admin Create Expense",
+			method: http.MethodPost,
+			path:   "/api/v1/admin/expenses",
+			token:  adminToken,
+			body: map[string]interface{}{
+				"title":       "Honor Satpam",
+				"category":    "Keamanan",
+				"amount":      4500000,
+				"vendor":      "Pos Satpam",
+				"date":        "01 Nov 2026",
+				"description": "Gaji satpam",
+			},
+			expectedCode: http.StatusCreated,
+		},
+		{
+			name:         "Admin List Users",
+			method:       http.MethodGet,
+			path:         "/api/v1/admin/users",
+			token:        adminToken,
+			expectedCode: http.StatusOK,
 		},
 	}
 

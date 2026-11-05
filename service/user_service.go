@@ -15,6 +15,7 @@ import (
 type UserService interface {
 	Register(req dto.RegisterRequest) (*dto.UserDetail, error)
 	Login(req dto.LoginRequest) (string, *dto.UserDetail, error)
+	ListUsers() ([]dto.UserDetail, error)
 }
 
 type userService struct {
@@ -92,4 +93,22 @@ func (s *userService) Login(req dto.LoginRequest) (string, *dto.UserDetail, erro
 	}
 
 	return tokenString, userDetail, nil
+}
+
+func (s *userService) ListUsers() ([]dto.UserDetail, error) {
+	users, err := s.userRepo.FindAll()
+	if err != nil {
+		return nil, err
+	}
+
+	var results []dto.UserDetail
+	for _, u := range users {
+		results = append(results, dto.UserDetail{
+			ID:    u.ID,
+			Name:  u.Name,
+			Email: u.Email,
+			Role:  u.Role,
+		})
+	}
+	return results, nil
 }

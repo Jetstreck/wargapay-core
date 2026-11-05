@@ -24,12 +24,13 @@ func main() {
 	// Menghubungkan ke database PostgreSQL
 	config.ConnectDB()
 
-	// Melakukan auto-migrate untuk entity User, WasteService, Dues, dan Transaction
+	// Melakukan auto-migrate untuk entity User, WasteService, Dues, Transaction, dan Expense
 	err := config.DB.AutoMigrate(
 		&entity.User{},
 		&entity.WasteService{},
 		&entity.Dues{},
 		&entity.Transaction{},
+		&entity.Expense{},
 	)
 	if err != nil {
 		log.Fatalf("Failed to auto migrate database: %v", err)
@@ -59,6 +60,11 @@ func main() {
 	txSvc := service.NewTransactionService(txRepo, userRepo, duesRepo, wasteRepo, midtransSvc, emailSvc)
 	txCtl := controller.NewTransactionController(txSvc)
 
+	// Inisialisasi Pengeluaran Kas RT (Expenses)
+	expenseRepo := repository.NewExpenseRepository(config.DB)
+	expenseSvc := service.NewExpenseService(expenseRepo)
+	expenseCtl := controller.NewExpenseController(expenseSvc)
+
 	// Inisialisasi dan jalankan Scheduler Service
 	scheduler := service.NewSchedulerService(emailSvc)
 	scheduler.Start()
@@ -76,7 +82,7 @@ func main() {
 	}))
 
 	// Menyiapkan routing aplikasi
-	routes.SetupRoutes(e, userCtl, wasteCtl, duesCtl, weatherCtl, txCtl)
+	routes.SetupRoutes(e, userCtl, wasteCtl, duesCtl, weatherCtl, txCtl, expenseCtl)
 
 	// Menentukan port server (default ke 8080 jika tidak ada di env)
 	port := os.Getenv("PORT")

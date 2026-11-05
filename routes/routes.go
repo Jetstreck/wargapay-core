@@ -13,6 +13,7 @@ func SetupRoutes(e *echo.Echo,
 	duesController *controller.DuesController,
 	weatherController *controller.WeatherController,
 	txController *controller.TransactionController,
+	expenseController *controller.ExpenseController,
 ) {
 	api := e.Group("/api/v1")
 
@@ -32,6 +33,10 @@ func SetupRoutes(e *echo.Echo,
 	userGroup.GET("/dues/:id", duesController.Get)
 	userGroup.GET("/weather", weatherController.Current)
 
+	// Buku Kas & Pengeluaran Kas RT (Transparansi untuk Warga & Admin)
+	userGroup.GET("/expenses", expenseController.List)
+	userGroup.GET("/expenses/summary", expenseController.Total)
+
 	// Transaksi & Payment (Warga & Admin)
 	userGroup.POST("/transactions", txController.Create)
 	userGroup.GET("/transactions", txController.List)
@@ -44,10 +49,19 @@ func SetupRoutes(e *echo.Echo,
 		return c.JSON(200, map[string]string{"message": "Welcome to Admin Dashboard"})
 	})
 
+	// Manajemen Warga untuk Admin
+	adminGroup.GET("/users", userController.ListUsers)
+
+	// Manajemen Pengeluaran Kas RT untuk Admin
+	adminGroup.POST("/expenses", expenseController.Create)
+	adminGroup.DELETE("/expenses/:id", expenseController.Delete)
+
+	// Manajemen Layanan Sampah untuk Admin
 	adminGroup.POST("/services", wasteController.Create)
 	adminGroup.PUT("/services/:id", wasteController.Update)
 	adminGroup.DELETE("/services/:id", wasteController.Delete)
 
+	// Manajemen Tagihan IPL untuk Admin
 	adminGroup.POST("/dues", duesController.Create)
 	adminGroup.PUT("/dues/:id", duesController.Update)
 	adminGroup.DELETE("/dues/:id", duesController.Delete)

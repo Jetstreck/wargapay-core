@@ -22,6 +22,7 @@ func main() {
 		&entity.WasteService{},
 		&entity.Dues{},
 		&entity.Transaction{},
+		&entity.Expense{},
 	)
 	if err != nil {
 		log.Fatalf("AutoMigrate gagal: %v", err)
@@ -224,6 +225,58 @@ func main() {
 		if err := config.DB.Where("order_id = ?", txList[i].OrderID).First(&existing).Error; err != nil {
 			config.DB.Create(&txList[i])
 			log.Printf("Transaksi dibuat: %s (Status: %s, Total: Rp %d)", txList[i].OrderID, txList[i].Status, txList[i].Amount)
+		}
+	}
+
+	// 5. Seed Pengeluaran Kas RT (Expenses)
+	expenses := []entity.Expense{
+		{
+			Title:       "Honor & Operasional Petugas Keamanan Cluster",
+			Category:    "Keamanan",
+			Amount:      4500000,
+			Vendor:      "Regu Satpam Pos Utama",
+			Date:        "01 Nov 2026",
+			Description: "Gaji bulanan 4 petugas satpam dan biaya ronda malam",
+			ReceiptRef:  "KW-2026-001",
+			ApprovedBy:  "Bpk. Hendra (Ketua RT)",
+		},
+		{
+			Title:       "Retribusi Truk Pengangkutan Sampah DLH",
+			Category:    "Kebersihan",
+			Amount:      2800000,
+			Vendor:      "Dinas Lingkungan Hidup / Vendor Mitra",
+			Date:        "02 Nov 2026",
+			Description: "Operasional truk pengangkut sampah 3x seminggu",
+			ReceiptRef:  "KW-2026-002",
+			ApprovedBy:  "Ibu Dewi (Bendahara)",
+		},
+		{
+			Title:       "Peremajaan & Penggantian Lampu PJU Blok B",
+			Category:    "Infrastruktur",
+			Amount:      1250000,
+			Vendor:      "Toko Listrik Terang Abadi",
+			Date:        "03 Nov 2026",
+			Description: "Penggantian 8 titik lampu LED PJU 50 Watt",
+			ReceiptRef:  "KW-2026-003",
+			ApprovedBy:  "Bpk. Agus (Seksi Pembangunan)",
+		},
+		{
+			Title:       "Pengadaan Refill APAR & Kotak P3K Pos RT",
+			Category:    "Operasional",
+			Amount:      650000,
+			Vendor:      "CV Citra Safety Mandiri",
+			Date:        "04 Nov 2026",
+			Description: "Inspeksi berkala dan refill 3 tabung pemadam pos satpam",
+			ReceiptRef:  "KW-2026-004",
+			ApprovedBy:  "Bpk. Hendra (Ketua RT)",
+		},
+	}
+
+	for i := range expenses {
+		var existing entity.Expense
+		if err := config.DB.Where("receipt_ref = ?", expenses[i].ReceiptRef).First(&existing).Error; err != nil {
+			config.DB.Create(&expenses[i])
+			log.Printf("Pengeluaran kas dibuat: %s (Rp %d)", expenses[i].Title, expenses[i].Amount)
 		}
 	}
 

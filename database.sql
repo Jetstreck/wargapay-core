@@ -101,3 +101,31 @@ SELECT setval('users_id_seq', (SELECT MAX(id) FROM users));
 SELECT setval('waste_services_id_seq', (SELECT MAX(id) FROM waste_services));
 SELECT setval('dues_id_seq', (SELECT MAX(id) FROM dues));
 
+-- 5. Skema Tabel Pengeluaran Kas RT (Expenses)
+CREATE TABLE IF NOT EXISTS expenses (
+    id BIGSERIAL PRIMARY KEY,
+    title VARCHAR(150) NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    amount BIGINT NOT NULL,
+    vendor VARCHAR(100) NOT NULL,
+    date VARCHAR(30) NOT NULL,
+    description TEXT,
+    receipt_ref VARCHAR(50),
+    approved_by VARCHAR(100),
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category);
+
+-- Insert Pengeluaran Kas RT Awal
+INSERT INTO expenses (id, title, category, amount, vendor, date, description, receipt_ref, approved_by) VALUES
+(1, 'Honor & Operasional Petugas Keamanan Cluster', 'Keamanan', 4500000, 'Regu Satpam Pos Utama', '01 Nov 2026', 'Gaji bulanan 4 petugas satpam dan biaya ronda malam', 'KW-2026-001', 'Bpk. Hendra (Ketua RT)'),
+(2, 'Retribusi Truk Pengangkutan Sampah DLH', 'Kebersihan', 2800000, 'Dinas Lingkungan Hidup / Vendor Mitra', '02 Nov 2026', 'Operasional truk pengangkut sampah 3x seminggu', 'KW-2026-002', 'Ibu Dewi (Bendahara)'),
+(3, 'Peremajaan & Penggantian Lampu PJU Blok B', 'Infrastruktur', 1250000, 'Toko Listrik Terang Abadi', '03 Nov 2026', 'Penggantian 8 titik lampu LED PJU 50 Watt', 'KW-2026-003', 'Bpk. Agus (Seksi Pembangunan)'),
+(4, 'Pengadaan Refill APAR & Kotak P3K Pos RT', 'Operasional', 650000, 'CV Citra Safety Mandiri', '04 Nov 2026', 'Inspeksi berkala dan refill 3 tabung pemadam pos satpam', 'KW-2026-004', 'Bpk. Hendra (Ketua RT)')
+ON CONFLICT (id) DO NOTHING;
+
+SELECT setval('expenses_id_seq', (SELECT MAX(id) FROM expenses));
+
+
